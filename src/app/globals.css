@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground: #e2e8f0;
+  --background: #0f172a;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* Code / log panel */
+.log-panel {
+  @apply bg-slate-900 border border-slate-700 rounded-lg p-4 font-mono text-sm overflow-auto;
+  max-height: 400px;
+}
+
+.log-panel .log-info {
+  @apply text-blue-400;
+}
+
+.log-panel .log-success {
+  @apply text-emerald-400;
+}
+
+.log-panel .log-warn {
+  @apply text-yellow-400;
+}
+
+.log-panel .log-error {
+  @apply text-red-400;
+}

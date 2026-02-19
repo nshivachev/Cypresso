@@ -1,0 +1,7 @@
+{
+  "/page": "app/page.js",
+  "/api/generate/route": "app/api/generate/route.js",
+  "/api/validate/route": "app/api/validate/route.js",
+  "/api/export/route": "app/api/export/route.js",
+  "/api/feedback/route": "app/api/feedback/route.js"
+}
