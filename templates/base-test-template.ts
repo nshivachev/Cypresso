@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Cypresso — Base Cypress Test Template
  *
