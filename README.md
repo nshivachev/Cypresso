@@ -110,7 +110,7 @@ Two env files are used:
 - `.env` — read by the Prisma CLI (`migrate`, `studio`, `generate`)
 - `.env.local` — read by Next.js at runtime
 
-Both set `DATABASE_URL="file:./prisma/dev.db"`. Neither is committed to version control.
+Both set `DATABASE_URL="file:./dev.db"`. Neither is committed to version control.
 
 ## Dry-Run Mode (Generate Only)
 
