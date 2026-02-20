@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
 
 /**
  * POST /api/validate
@@ -10,7 +11,10 @@ export async function POST(request: NextRequest) {
   const logs: string[] = [];
 
   try {
-    const { testCode } = (await request.json()) as { testCode?: string };
+    const { testCode, testId } = (await request.json()) as {
+      testCode?: string;
+      testId?: string;
+    };
 
     if (!testCode?.trim()) {
       return NextResponse.json(
@@ -58,6 +62,28 @@ export async function POST(request: NextRequest) {
 
     const valid = issues.length === 0;
     logs.push(`Validation complete — ${issues.length} issue(s) found.`);
+
+    // Persist validation issues to SQLite database
+    if (testId) {
+      try {
+        await prisma.validationIssue.deleteMany({ where: { testId } });
+        if (issues.length > 0) {
+          await prisma.validationIssue.createMany({
+            data: issues.map((issue) => ({
+              testId: testId!,
+              issue,
+              severity: 'warn',
+            })),
+          });
+        }
+        logs.push(
+          `Saved ${issues.length} validation issue(s) to SQLite database.`,
+        );
+      } catch (dbErr) {
+        const dbMsg = dbErr instanceof Error ? dbErr.message : String(dbErr);
+        logs.push(`Warning: Failed to save validation issues: ${dbMsg}`);
+      }
+    }
 
     return NextResponse.json({ valid, issues, logs });
   } catch (err) {

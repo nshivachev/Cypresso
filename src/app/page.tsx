@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -12,6 +12,16 @@ interface LogEntry {
   timestamp: string;
   level: LogLevel;
   message: string;
+}
+
+interface SavedTest {
+  id: string;
+  userStory: string;
+  testCode: string;
+  status: string;
+  createdAt: string;
+  validationIssues: { id: string; issue: string; severity: string }[];
+  exportLog: { id: string; path: string }[];
 }
 
 // ---------------------------------------------------------------------------
@@ -68,9 +78,25 @@ async function fetchWithRetry(
 export default function DashboardPage() {
   const [userStory, setUserStory] = useState('');
   const [testCode, setTestCode] = useState('');
+  const [testId, setTestId] = useState<string | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(false);
+  const [savedTests, setSavedTests] = useState<SavedTest[]>([]);
   const logsEndRef = useRef<HTMLDivElement>(null);
+
+  const loadSavedTests = useCallback(async () => {
+    try {
+      const res = await fetch('/api/tests');
+      const data = await res.json();
+      if (data.status === 'success') setSavedTests(data.tests);
+    } catch {
+      // non-blocking
+    }
+  }, []);
+
+  useEffect(() => {
+    loadSavedTests();
+  }, [loadSavedTests]);
 
   const addLog = useCallback((level: LogLevel, message: string) => {
     setLogs((prev) => [...prev, { timestamp: now(), level, message }]);
@@ -92,9 +118,13 @@ export default function DashboardPage() {
       const res = await fetchWithRetry('/api/generate', { userStory });
       const data = await res.json();
       (data.logs as string[])?.forEach((l: string) => addLog('INFO', l));
-      if (data.status === 'success') {
+      if (data.status === 'success' || data.status === 'partial-success') {
         setTestCode(data.testCode);
+        if (data.testId) setTestId(data.testId);
         addLog('SUCCESS', 'Test generated successfully.');
+        if (data.status === 'partial-success')
+          addLog('WARN', 'DB save failed — test not persisted.');
+        await loadSavedTests();
       } else {
         addLog('ERROR', `Generation failed: ${data.error ?? 'unknown'}`);
       }
@@ -117,7 +147,7 @@ export default function DashboardPage() {
     setLoading(true);
     addLog('INFO', 'Validating generated test…');
     try {
-      const res = await fetchWithRetry('/api/validate', { testCode });
+      const res = await fetchWithRetry('/api/validate', { testCode, testId });
       const data = await res.json();
       (data.logs as string[])?.forEach((l: string) => addLog('INFO', l));
       if (data.valid) {
@@ -147,7 +177,7 @@ export default function DashboardPage() {
     setLoading(true);
     addLog('INFO', 'Exporting test (dry-run)…');
     try {
-      const res = await fetchWithRetry('/api/export', { testCode });
+      const res = await fetchWithRetry('/api/export', { testCode, testId });
       const data = await res.json();
       (data.logs as string[])?.forEach((l: string) => addLog('INFO', l));
       if (data.status === 'success') {
@@ -175,6 +205,7 @@ export default function DashboardPage() {
     addLog('INFO', '▶ Starting full Cypresso workflow…');
 
     let generatedCode = '';
+    let generatedTestId: string | undefined;
     const allLogs: string[] = [];
     let finalStatus = 'success';
 
@@ -187,10 +218,16 @@ export default function DashboardPage() {
         addLog('INFO', l);
         allLogs.push(l);
       });
-      if (genData.status === 'success') {
+      if (
+        genData.status === 'success' ||
+        genData.status === 'partial-success'
+      ) {
         generatedCode = genData.testCode;
+        generatedTestId = genData.testId;
         setTestCode(generatedCode);
+        if (genData.testId) setTestId(genData.testId);
         addLog('SUCCESS', 'Step 1 complete — test generated.');
+        await loadSavedTests();
         allLogs.push('Generate: success');
       } else {
         throw new Error(genData.error ?? 'generation failed');
@@ -212,6 +249,7 @@ export default function DashboardPage() {
         addLog('INFO', '[Step 2/4] Validating test…');
         const valRes = await fetchWithRetry('/api/validate', {
           testCode: generatedCode,
+          testId: generatedTestId,
         });
         const valData = await valRes.json();
         (valData.logs as string[])?.forEach((l: string) => {
@@ -248,6 +286,7 @@ export default function DashboardPage() {
         addLog('INFO', '[Step 3/4] Exporting test (dry-run)…');
         const expRes = await fetchWithRetry('/api/export', {
           testCode: generatedCode,
+          testId: generatedTestId,
         });
         const expData = await expRes.json();
         (expData.logs as string[])?.forEach((l: string) => {
@@ -403,6 +442,86 @@ export default function DashboardPage() {
           </div>
         </section>
       </div>
+
+      {/* Saved Tests */}
+      <section className='mt-8'>
+        <div className='mb-3 flex items-center justify-between'>
+          <h2 className='text-sm font-medium text-slate-300'>
+            Saved Tests{' '}
+            <span className='ml-1 rounded bg-slate-700 px-1.5 py-0.5 text-xs text-slate-400'>
+              {savedTests.length}
+            </span>
+          </h2>
+          <button
+            onClick={loadSavedTests}
+            className='text-xs text-slate-500 hover:text-slate-300'
+          >
+            Refresh
+          </button>
+        </div>
+
+        {savedTests.length === 0 ? (
+          <p className='text-xs text-slate-600'>
+            No saved tests yet — generate one above.
+          </p>
+        ) : (
+          <div className='space-y-2'>
+            {savedTests.map((test) => (
+              <div
+                key={test.id}
+                className='flex items-start justify-between rounded-lg border border-slate-700 bg-slate-800 px-4 py-3'
+              >
+                <div className='min-w-0 flex-1'>
+                  <p className='truncate text-sm font-medium text-slate-100'>
+                    {test.userStory.slice(0, 80)}
+                    {test.userStory.length > 80 ? '…' : ''}
+                  </p>
+                  <p className='mt-0.5 text-xs text-slate-500'>
+                    Status:{' '}
+                    <span
+                      className={
+                        test.status === 'exported'
+                          ? 'text-emerald-400'
+                          : 'text-slate-400'
+                      }
+                    >
+                      {test.status}
+                    </span>{' '}
+                    &middot; Issues: {test.validationIssues.length} &middot;
+                    Exports: {test.exportLog.length} &middot;{' '}
+                    {new Date(test.createdAt).toLocaleString()}
+                  </p>
+                </div>
+                <div className='ml-4 flex shrink-0 gap-2'>
+                  <button
+                    onClick={() => {
+                      setTestCode(test.testCode);
+                      setTestId(test.id);
+                      setUserStory(test.userStory);
+                      addLog('INFO', `Loaded test ${test.id} from database.`);
+                    }}
+                    className='rounded border border-slate-600 px-2 py-1 text-xs text-slate-300 hover:bg-slate-700'
+                  >
+                    Load
+                  </button>
+                  <button
+                    onClick={async () => {
+                      await fetch(`/api/tests/${test.id}`, {
+                        method: 'DELETE',
+                      });
+                      await loadSavedTests();
+                      addLog('INFO', `Deleted test ${test.id} from database.`);
+                    }}
+                    className='rounded border border-red-800 px-2 py-1 text-xs text-red-400 hover:bg-red-900/30'
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
     </main>
   );
 }

@@ -1,1 +1,10 @@
 node_modules
+.next
+
+# Prisma / SQLite
+prisma/dev.db
+prisma/dev.db-journal
+
+# Environment
+.env.local
+.env

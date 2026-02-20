@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
+import { prisma } from '@/lib/db';
 
 /**
  * POST /api/export
@@ -12,9 +13,10 @@ export async function POST(request: NextRequest) {
   const logs: string[] = [];
 
   try {
-    const { testCode, targetPath } = (await request.json()) as {
+    const { testCode, targetPath, testId } = (await request.json()) as {
       testCode?: string;
       targetPath?: string;
+      testId?: string;
     };
 
     if (!testCode?.trim()) {
@@ -48,6 +50,21 @@ export async function POST(request: NextRequest) {
     logs.push(`File name: ${fileName}`);
     logs.push(`Full export path: ${exportedPath}`);
     logs.push('Dry-run mode — file NOT written to disk.');
+
+    // Log export to SQLite database
+    if (testId) {
+      try {
+        await prisma.exportLog.create({ data: { testId, path: exportedPath } });
+        await prisma.generatedTest.update({
+          where: { id: testId },
+          data: { status: 'exported', exportPath: exportedPath },
+        });
+        logs.push(`Export logged to SQLite database for test ID: ${testId}`);
+      } catch (dbErr) {
+        const dbMsg = dbErr instanceof Error ? dbErr.message : String(dbErr);
+        logs.push(`Warning: Failed to log export: ${dbMsg}`);
+      }
+    }
 
     return NextResponse.json({ exportedPath, status: 'success', logs });
   } catch (err) {

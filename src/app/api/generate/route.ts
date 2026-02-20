@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { prisma } from '@/lib/db';
 
 /**
  * POST /api/generate
@@ -83,7 +84,35 @@ export async function POST(request: NextRequest) {
       'Test code generated from template with user-story placeholders.',
     );
 
-    return NextResponse.json({ testCode, status: 'success', logs });
+    // Save to SQLite database with retry logic
+    let testId: string | undefined;
+    let dbRetries = 0;
+    const maxDbRetries = 2;
+
+    while (dbRetries < maxDbRetries && !testId) {
+      try {
+        const record = await prisma.generatedTest.create({
+          data: { userStory, testCode, status: 'draft' },
+        });
+        testId = record.id;
+        logs.push(`Saved to SQLite database with ID: ${testId}`);
+      } catch (dbErr) {
+        dbRetries++;
+        const dbMsg = dbErr instanceof Error ? dbErr.message : String(dbErr);
+        if (dbRetries < maxDbRetries) {
+          logs.push(
+            `Database save failed, retrying (${dbRetries}/${maxDbRetries}): ${dbMsg}`,
+          );
+        } else {
+          logs.push(
+            `Database save failed after ${maxDbRetries} retries: ${dbMsg}`,
+          );
+        }
+      }
+    }
+
+    const status = testId ? 'success' : 'partial-success';
+    return NextResponse.json({ testCode, testId, status, logs });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logs.push(`Fatal error: ${message}`);

@@ -1,0 +1,41 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model GeneratedTest {
+  id         String   @id @default(cuid())
+  userStory  String
+  testCode   String
+  status     String   @default("draft")
+  exportPath String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  validationIssues ValidationIssue[]
+  exportLog        ExportLog[]
+}
+
+model ValidationIssue {
+  id       String        @id @default(cuid())
+  testId   String
+  test     GeneratedTest @relation(fields: [testId], references: [id], onDelete: Cascade)
+  issue    String
+  severity String        @default("warn")
+
+  @@index([testId])
+}
+
+model ExportLog {
+  id        String        @id @default(cuid())
+  testId    String
+  test      GeneratedTest @relation(fields: [testId], references: [id], onDelete: Cascade)
+  path      String
+  timestamp DateTime      @default(now())
+
+  @@index([testId])
+}
