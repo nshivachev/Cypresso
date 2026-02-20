@@ -28,6 +28,156 @@ interface SavedTest {
 // Helpers
 // ---------------------------------------------------------------------------
 
+function CypressoMark({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox='0 0 48 48'
+      fill='none'
+      xmlns='http://www.w3.org/2000/svg'
+      className={className}
+      aria-hidden='true'
+    >
+      {/* Steam */}
+      <path
+        d='M17 10c2 2 2 4 0 6'
+        stroke='currentColor'
+        strokeWidth='2.5'
+        strokeLinecap='round'
+      />
+      <path
+        d='M24 8c2 2 2 5 0 7'
+        stroke='currentColor'
+        strokeWidth='2.5'
+        strokeLinecap='round'
+      />
+      <path
+        d='M31 10c2 2 2 4 0 6'
+        stroke='currentColor'
+        strokeWidth='2.5'
+        strokeLinecap='round'
+      />
+
+      {/* Cup */}
+      <path
+        d='M14 18h18a0 0 0 0 1 0 0v10a8 8 0 0 1-8 8h-2a8 8 0 0 1-8-8V18z'
+        stroke='currentColor'
+        strokeWidth='2.5'
+        strokeLinejoin='round'
+      />
+      <path
+        d='M32 20h3a5 5 0 0 1 0 10h-3'
+        stroke='currentColor'
+        strokeWidth='2.5'
+        strokeLinecap='round'
+        strokeLinejoin='round'
+      />
+
+      {/* Check */}
+      <path
+        d='M19.5 27.5l3 3 6-7'
+        stroke='currentColor'
+        strokeWidth='2.5'
+        strokeLinecap='round'
+        strokeLinejoin='round'
+      />
+
+      {/* Saucer */}
+      <path
+        d='M14 38h20'
+        stroke='currentColor'
+        strokeWidth='2.5'
+        strokeLinecap='round'
+      />
+    </svg>
+  );
+}
+
+function CalendarIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox='0 0 24 24'
+      fill='none'
+      xmlns='http://www.w3.org/2000/svg'
+      className={className}
+      aria-hidden='true'
+    >
+      <path
+        d='M7 3v2M17 3v2'
+        stroke='currentColor'
+        strokeWidth='2'
+        strokeLinecap='round'
+      />
+      <path
+        d='M4 7h16'
+        stroke='currentColor'
+        strokeWidth='2'
+        strokeLinecap='round'
+      />
+      <path
+        d='M6 5h12a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z'
+        stroke='currentColor'
+        strokeWidth='2'
+        strokeLinejoin='round'
+      />
+      <path
+        d='M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01'
+        stroke='currentColor'
+        strokeWidth='3'
+        strokeLinecap='round'
+      />
+    </svg>
+  );
+}
+
+function DateField({
+  id,
+  label,
+  value,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const openPicker = () => {
+    const input = inputRef.current;
+    if (!input) return;
+    // showPicker() is supported in Chromium-based browsers.
+    (input as unknown as { showPicker?: () => void }).showPicker?.();
+    input.focus();
+  };
+
+  return (
+    <div>
+      <label htmlFor={id} className='label'>
+        {label}
+      </label>
+      <div className='relative'>
+        <input
+          ref={inputRef}
+          id={id}
+          type='date'
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className='input pr-10'
+        />
+        <button
+          type='button'
+          onClick={openPicker}
+          className='absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500'
+          aria-label={`${label} calendar`}
+          title='Pick a date'
+        >
+          <CalendarIcon className='h-4 w-4' />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function logLevelClass(level: LogLevel): string {
   switch (level) {
     case 'INFO':
@@ -396,29 +546,188 @@ export default function DashboardPage() {
 
   // ── Render ────────────────────────────────────────────────────────────
   return (
-    <main className='mx-auto max-w-5xl px-6 py-10'>
+    <main className='mx-auto max-w-6xl px-6 py-12'>
       {/* Header */}
-      <header className='mb-8 flex items-center gap-3'>
-        <div className='flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-600 text-lg font-bold'>
-          C
-        </div>
-        <div>
-          <h1 className='text-2xl font-bold tracking-tight'>Cypresso</h1>
-          <p className='text-sm text-slate-400'>
-            Cypress Test Generator — Generate &middot; Validate &middot; Export
-          </p>
+      <header className='mb-6 flex flex-wrap items-center justify-between gap-4'>
+        <div className='flex items-center gap-3'>
+          <div className='flex h-11 w-11 items-center justify-center rounded-xl border border-slate-700 bg-slate-800/60'>
+            <CypressoMark className='h-8 w-8 text-emerald-400' />
+          </div>
+          <div>
+            <h1 className='text-2xl font-bold tracking-tight text-slate-100'>
+              Cypresso
+            </h1>
+            <p className='text-sm text-slate-400'>
+              Cypress tests — generate, validate, export
+            </p>
+          </div>
         </div>
       </header>
 
+      {/* Saved Tests */}
+      <section className='mb-10'>
+        <div className='mb-3 flex items-center justify-between'>
+          <h2 className='text-sm font-medium text-slate-300'>
+            Saved Tests{' '}
+            <span className='ml-1 rounded bg-slate-700 px-1.5 py-0.5 text-xs text-slate-300'>
+              {testCount}
+            </span>
+          </h2>
+          <button type='button' onClick={loadSavedTests} className='btn-ghost'>
+            Refresh
+          </button>
+        </div>
+
+        {/* Filter Controls */}
+        <div className='card-tight mb-4'>
+          <div className='grid gap-3 md:grid-cols-4'>
+            <div>
+              <label htmlFor='saved-search' className='label'>
+                Search
+              </label>
+              <input
+                id='saved-search'
+                type='text'
+                placeholder='Search by story or id…'
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                className='input'
+              />
+            </div>
+            <div>
+              <label htmlFor='saved-status' className='label'>
+                Status
+              </label>
+              <select
+                id='saved-status'
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                className='select'
+              >
+                <option value='all'>All</option>
+                <option value='draft'>Draft</option>
+                <option value='exported'>Exported</option>
+              </select>
+            </div>
+            <DateField
+              id='saved-date-from'
+              label='From'
+              value={dateFrom}
+              onChange={setDateFrom}
+            />
+            <DateField
+              id='saved-date-to'
+              label='To'
+              value={dateTo}
+              onChange={setDateTo}
+            />
+          </div>
+          <div className='mt-3 flex justify-end'>
+            <button
+              type='button'
+              onClick={handleClearFilters}
+              className='btn btn-secondary px-3 py-1.5 text-xs'
+            >
+              Clear filters
+            </button>
+          </div>
+        </div>
+
+        {savedTests.length === 0 ? (
+          <p className='text-xs text-slate-600'>
+            {searchText || selectedStatus !== 'all' || dateFrom || dateTo
+              ? 'No tests match the selected filters.'
+              : 'No saved tests yet — generate one below.'}
+          </p>
+        ) : (
+          <div className='space-y-2'>
+            {savedTests.map((test) => (
+              <div
+                key={test.id}
+                className='card-tight flex items-start justify-between gap-4'
+              >
+                <div className='min-w-0 flex-1'>
+                  <p
+                    className='truncate text-sm font-medium text-slate-100'
+                    title={test.userStory}
+                  >
+                    {test.userStory.slice(0, 80)}
+                    {test.userStory.length > 80 ? '…' : ''}
+                  </p>
+                  <div className='mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500'>
+                    <span
+                      className={
+                        test.status === 'exported'
+                          ? 'badge border-emerald-900/50 text-emerald-300'
+                          : 'badge'
+                      }
+                    >
+                      {test.status}
+                    </span>
+                    <span className='badge'>
+                      Issues: {test.validationIssues.length}
+                    </span>
+                    <span className='badge'>
+                      Exports: {test.exportLog.length}
+                    </span>
+                    <span className='text-slate-500'>
+                      {new Date(test.createdAt).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+                <div className='ml-4 flex shrink-0 gap-2'>
+                  <button
+                    type='button'
+                    onClick={() => {
+                      setTestCode(test.testCode);
+                      setTestId(test.id);
+                      setUserStory(test.userStory);
+                      addLog('INFO', `Loaded test ${test.id} from database.`);
+                    }}
+                    className='btn btn-secondary px-3 py-1.5 text-xs'
+                  >
+                    Load
+                  </button>
+                  <button
+                    type='button'
+                    onClick={() => {
+                      setEditingTest(test);
+                      setEditUserStory(test.userStory);
+                      setEditTestCode(test.testCode);
+                    }}
+                    className='btn btn-info px-3 py-1.5 text-xs'
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type='button'
+                    onClick={async () => {
+                      await fetch(`/api/tests/${test.id}`, {
+                        method: 'DELETE',
+                      });
+                      await loadSavedTests();
+                      addLog('INFO', `Deleted test ${test.id} from database.`);
+                    }}
+                    className='btn btn-danger px-3 py-1.5 text-xs'
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
       <div className='grid gap-6 lg:grid-cols-2'>
         {/* Left column — Input & actions */}
-        <section className='space-y-4'>
+        <section className='card space-y-4'>
           <label className='block'>
             <span className='mb-1 block text-sm font-medium text-slate-300'>
-              User Story
+              User story
             </span>
             <textarea
-              className='w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500'
+              className='textarea'
               rows={6}
               placeholder='As a user, I want to log in so that I can access my dashboard…'
               value={userStory}
@@ -426,34 +735,38 @@ export default function DashboardPage() {
             />
           </label>
 
-          <div className='flex flex-wrap gap-3'>
+          <div className='grid grid-cols-1 gap-3 sm:grid-cols-3'>
             <button
+              type='button'
               onClick={handleGenerate}
               disabled={loading}
-              className='rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50'
+              className='btn btn-primary w-full'
             >
-              {loading ? 'Working…' : 'Generate Test'}
+              {loading ? 'Working…' : 'Generate test'}
             </button>
             <button
+              type='button'
               onClick={handleValidate}
               disabled={loading}
-              className='rounded-lg border border-slate-600 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-700 disabled:opacity-50'
+              className='btn btn-secondary w-full'
             >
               Validate
             </button>
             <button
+              type='button'
               onClick={handleExport}
               disabled={loading}
-              className='rounded-lg border border-slate-600 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-700 disabled:opacity-50'
+              className='btn btn-secondary w-full'
             >
-              Export (Dry-Run)
+              Export (dry-run)
             </button>
             <button
+              type='button'
               onClick={handleFullWorkflow}
               disabled={loading}
-              className='rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50'
+              className='btn btn-accent w-full sm:col-span-3'
             >
-              Run Full Workflow
+              Run full workflow
             </button>
           </div>
 
@@ -461,9 +774,9 @@ export default function DashboardPage() {
           {testCode && (
             <div>
               <h2 className='mb-1 text-sm font-medium text-slate-300'>
-                Generated Test
+                Generated test
               </h2>
-              <pre className='log-panel whitespace-pre-wrap text-emerald-300'>
+              <pre className='log-panel whitespace-pre-wrap text-emerald-200'>
                 {testCode}
               </pre>
             </div>
@@ -471,14 +784,15 @@ export default function DashboardPage() {
         </section>
 
         {/* Right column — Logs */}
-        <section>
-          <div className='mb-2 flex items-center justify-between'>
+        <section className='card'>
+          <div className='mb-3 flex items-center justify-between'>
             <h2 className='text-sm font-medium text-slate-300'>
-              Logs &amp; Status
+              Logs &amp; status
             </h2>
             <button
+              type='button'
               onClick={() => setLogs([])}
-              className='text-xs text-slate-500 hover:text-slate-300'
+              className='btn-ghost'
             >
               Clear
             </button>
@@ -501,161 +815,22 @@ export default function DashboardPage() {
         </section>
       </div>
 
-      {/* Saved Tests */}
-      <section className='mt-8'>
-        <div className='mb-3 flex items-center justify-between'>
-          <h2 className='text-sm font-medium text-slate-300'>
-            Saved Tests{' '}
-            <span className='ml-1 rounded bg-slate-700 px-1.5 py-0.5 text-xs text-slate-400'>
-              {testCount}
-            </span>
-          </h2>
-          <button
-            onClick={loadSavedTests}
-            className='text-xs text-slate-500 hover:text-slate-300'
-          >
-            Refresh
-          </button>
-        </div>
-
-        {/* Filter Controls */}
-        <div className='mb-4 grid gap-3 rounded-lg border border-slate-700 bg-slate-800 p-4 md:grid-cols-4'>
-          <div>
-            <label className='mb-1 block text-xs text-slate-400'>Search</label>
-            <input
-              type='text'
-              placeholder='Search tests...'
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              className='w-full rounded border border-slate-600 bg-slate-900 px-2 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:outline-none'
-            />
-          </div>
-          <div>
-            <label className='mb-1 block text-xs text-slate-400'>Status</label>
-            <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className='w-full rounded border border-slate-600 bg-slate-900 px-2 py-1.5 text-xs text-slate-100 focus:border-emerald-500 focus:outline-none'
-            >
-              <option value='all'>All</option>
-              <option value='draft'>Draft</option>
-              <option value='exported'>Exported</option>
-            </select>
-          </div>
-          <div>
-            <label className='mb-1 block text-xs text-slate-400'>
-              From Date
-            </label>
-            <input
-              type='date'
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className='w-full rounded border border-slate-600 bg-slate-900 px-2 py-1.5 text-xs text-slate-100 focus:border-emerald-500 focus:outline-none'
-            />
-          </div>
-          <div>
-            <label className='mb-1 block text-xs text-slate-400'>To Date</label>
-            <input
-              type='date'
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className='w-full rounded border border-slate-600 bg-slate-900 px-2 py-1.5 text-xs text-slate-100 focus:border-emerald-500 focus:outline-none'
-            />
-          </div>
-          <div className='md:col-span-4 flex justify-end'>
-            <button
-              onClick={handleClearFilters}
-              className='rounded border border-slate-600 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-700'
-            >
-              Clear Filters
-            </button>
-          </div>
-        </div>
-
-        {savedTests.length === 0 ? (
-          <p className='text-xs text-slate-600'>
-            {searchText || selectedStatus !== 'all' || dateFrom || dateTo
-              ? 'No tests match the selected filters.'
-              : 'No saved tests yet — generate one above.'}
-          </p>
-        ) : (
-          <div className='space-y-2'>
-            {savedTests.map((test) => (
-              <div
-                key={test.id}
-                className='flex items-start justify-between rounded-lg border border-slate-700 bg-slate-800 px-4 py-3'
-              >
-                <div className='min-w-0 flex-1'>
-                  <p className='truncate text-sm font-medium text-slate-100'>
-                    {test.userStory.slice(0, 80)}
-                    {test.userStory.length > 80 ? '…' : ''}
-                  </p>
-                  <p className='mt-0.5 text-xs text-slate-500'>
-                    Status:{' '}
-                    <span
-                      className={
-                        test.status === 'exported'
-                          ? 'text-emerald-400'
-                          : 'text-slate-400'
-                      }
-                    >
-                      {test.status}
-                    </span>{' '}
-                    &middot; Issues: {test.validationIssues.length} &middot;
-                    Exports: {test.exportLog.length} &middot;{' '}
-                    {new Date(test.createdAt).toLocaleString()}
-                  </p>
-                </div>
-                <div className='ml-4 flex shrink-0 gap-2'>
-                  <button
-                    onClick={() => {
-                      setTestCode(test.testCode);
-                      setTestId(test.id);
-                      setUserStory(test.userStory);
-                      addLog('INFO', `Loaded test ${test.id} from database.`);
-                    }}
-                    className='rounded border border-slate-600 px-2 py-1 text-xs text-slate-300 hover:bg-slate-700'
-                  >
-                    Load
-                  </button>
-                  <button
-                    onClick={() => {
-                      setEditingTest(test);
-                      setEditUserStory(test.userStory);
-                      setEditTestCode(test.testCode);
-                    }}
-                    className='rounded border border-blue-700 px-2 py-1 text-xs text-blue-400 hover:bg-blue-900/30'
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={async () => {
-                      await fetch(`/api/tests/${test.id}`, {
-                        method: 'DELETE',
-                      });
-                      await loadSavedTests();
-                      addLog('INFO', `Deleted test ${test.id} from database.`);
-                    }}
-                    className='rounded border border-red-800 px-2 py-1 text-xs text-red-400 hover:bg-red-900/30'
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
       {/* Edit Modal */}
       {editingTest && (
         <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4'>
-          <div className='w-full max-w-4xl rounded-lg bg-slate-800 p-6 shadow-2xl'>
+          <div
+            className='w-full max-w-4xl rounded-xl border border-slate-700 bg-slate-800 p-6 shadow-2xl'
+            role='dialog'
+            aria-modal='true'
+            aria-label='Edit saved test'
+          >
             <div className='mb-4 flex items-center justify-between'>
               <h2 className='text-lg font-bold text-slate-100'>Edit Test</h2>
               <button
+                type='button'
                 onClick={() => setEditingTest(null)}
                 className='text-slate-400 hover:text-slate-200'
+                aria-label='Close edit modal'
               >
                 ✕
               </button>
@@ -667,7 +842,7 @@ export default function DashboardPage() {
                   User Story
                 </label>
                 <textarea
-                  className='w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500'
+                  className='textarea'
                   rows={4}
                   value={editUserStory}
                   onChange={(e) => setEditUserStory(e.target.value)}
@@ -689,14 +864,16 @@ export default function DashboardPage() {
 
             <div className='mt-6 flex justify-end gap-3'>
               <button
+                type='button'
                 onClick={() => setEditingTest(null)}
-                className='rounded-lg border border-slate-600 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-700'
+                className='btn btn-secondary'
               >
                 Cancel
               </button>
               <button
+                type='button'
                 onClick={handleUpdateTest}
-                className='rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500'
+                className='btn btn-accent'
               >
                 Save Changes
               </button>

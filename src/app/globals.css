@@ -2,6 +2,64 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+  .card {
+    @apply rounded-xl border border-slate-700 bg-slate-800/60 p-5;
+  }
+
+  .card-tight {
+    @apply rounded-xl border border-slate-700 bg-slate-800/60 p-4;
+  }
+
+  .label {
+    @apply mb-1 block text-xs font-medium text-slate-400;
+  }
+
+  .input {
+    @apply w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500;
+  }
+
+  .select {
+    @apply w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500;
+  }
+
+  .textarea {
+    @apply w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply bg-emerald-600 text-white hover:bg-emerald-500;
+  }
+
+  .btn-secondary {
+    @apply border border-slate-600 text-slate-200 hover:bg-slate-700;
+  }
+
+  .btn-accent {
+    @apply bg-blue-600 text-white hover:bg-blue-500;
+  }
+
+  .btn-info {
+    @apply border border-blue-700 text-blue-400 hover:bg-blue-900/30;
+  }
+
+  .btn-danger {
+    @apply border border-red-800 text-red-400 hover:bg-red-900/30;
+  }
+
+  .btn-ghost {
+    @apply text-xs text-slate-500 hover:text-slate-300;
+  }
+
+  .badge {
+    @apply inline-flex items-center rounded-md border border-slate-700 bg-slate-900 px-2 py-0.5 text-xs text-slate-300;
+  }
+}
+
 :root {
   --foreground: #e2e8f0;
   --background: #0f172a;
