@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
     if (search) {
       const searchLower = search.toLowerCase();
       tests = tests.filter(
-        (test) =>
+        (test: (typeof tests)[0]) =>
           test.userStory.toLowerCase().includes(searchLower) ||
           test.testCode.toLowerCase().includes(searchLower),
       );
