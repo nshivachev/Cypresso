@@ -24,7 +24,11 @@ Mode: Generate Only (Dry-Run)
    - **Buttons** — "Generate Test", "Export", "Retry" (calls respective API routes via `fetch`)
    - **Logs/status panel** — scrollable `<pre>` area displaying real-time workflow status, step-by-step results, and error messages
    - **State management** — `useState` for story text, loading state, logs array, generated test code preview
+   - **Saved Tests panel** — displays database-persisted tests with Load, Edit, and Delete actions
+   - **Filter controls** — search input, status dropdown (All/Draft/Exported), date range pickers, clear filters button
+   - **Edit modal** — full-screen overlay with editable userStory and testCode textareas, save/cancel buttons
    - All API calls wrapped with retry logic (up to 3 attempts with exponential backoff)
+   - Filter state triggers automatic test list reload via `useEffect` dependency
 10. **Self-validate**: Confirm all 3 app shell files exist and contain expected markers (`@tailwind`, `<html`, `"use client"`). Retry up to 2×.
 
 ## Phase 3 — API Routes (4 files)
@@ -32,18 +36,22 @@ Mode: Generate Only (Dry-Run)
 11. Create `Cypresso/src/app/api/generate/route.ts` — `POST` handler that:
     - Accepts `{ userStory: string }` in request body
     - Reads `agents/TestGeneratorAgent.md` prompt (stub: returns a hardcoded Cypress test from the base template populated with the user story)
-    - Returns `{ testCode: string, status: "success" | "error", logs: string[] }`
+    - Saves generated test to database with status='draft', returns testId
+    - Returns `{ testCode: string, testId: string, status: "success" | "partial-success" | "error", logs: string[] }`
     - Includes try/catch with validation and retry metadata in response
+    - Retry up to 2 times for database save failures
 
 12. Create `Cypresso/src/app/api/export/route.ts` — `POST` handler that:
-    - Accepts `{ testCode: string, targetPath?: string }`
+    - Accepts `{ testCode: string, testId?: string, targetPath?: string }`
     - Reads `agents/ExportAgent.md` prompt (stub: returns the target file path and confirmation)
+    - Creates ExportLog record and updates test status to 'exported' in database
     - Returns `{ exportedPath: string, status: "success" | "error", logs: string[] }`
     - In dry-run mode, returns the _intended_ path without writing to disk
 
 13. Create `Cypresso/src/app/api/validate/route.ts` — `POST` handler that:
-    - Accepts `{ testCode: string }`
+    - Accepts `{ testCode: string, testId?: string }`
     - Reads `agents/QAValidationAgent.md` prompt (stub: performs basic syntax checks — looks for `describe`, `it`, `expect`/`should`/`cy.`)
+    - Persists validation issues to database linked to testId
     - Returns `{ valid: boolean, issues: string[], logs: string[] }`
 
 14. Create `Cypresso/src/app/api/feedback/route.ts` — `POST` handler that:
@@ -51,9 +59,13 @@ Mode: Generate Only (Dry-Run)
     - Reads `agents/UIFeedbackAgent.md` prompt (stub: formats logs into user-friendly summary)
     - Returns `{ summary: string, recommendations: string[] }`
 
-15. **Self-validate**: Confirm all 4 route files exist and each exports a `POST` function. Retry up to 2×.
+14a. Create `Cypresso/src/app/api/tests/route.ts` — `GET` handler that: - Accepts query parameters: `search`, `status`, `dateFrom`, `dateTo` - Applies status and date filters at database level (Prisma `where` clause) - Applies case-insensitive text search in JavaScript (SQLite compatibility) - Date handling: `dateFrom` → `T00:00:00Z`, `dateTo` → `T23:59:59Z` - Returns `{ tests: GeneratedTest[], status: "success" | "error", count: number }`
 
-## Phase 4 — Agent Prompts (4 files)
+14b. Create `Cypresso/src/app/api/tests/[testId]/route.ts` — handlers: - `GET` — Returns single test with validation issues and export logs - `PUT` — Updates test `userStory` and/or `testCode`, refreshes `updatedAt` - `DELETE` — Removes test with cascade delete of related records
+
+15. **Self-validate**: Confirm all 4 route files exist and each exports a `POST` function. Confirm test management routes export `GET`, `PUT`, `DELETE`. Retry up to 2×.
+
+## Phase 4 — Agent Prompts (5 files)
 
 16. Create `Cypresso/agents/TestGeneratorAgent.md` — functional prompt:
     - Role: Generate a Cypress E2E test from a user story
@@ -76,12 +88,15 @@ Mode: Generate Only (Dry-Run)
 19. Create `Cypresso/agents/UIFeedbackAgent.md` — functional prompt:
     - Role: Summarize workflow results for the user
     - Rules: format logs into human-readable steps, highlight errors in red/warnings in yellow, provide actionable next steps
+    - Includes feedback rules for filter, update, delete, and load operations
     - Input: logs array + final status
     - Output: formatted summary + recommendations
 
-20. **Self-validate**: Confirm all 4 agent files exist and each contains at least a `# Role` and `# Rules` section. Retry up to 2×.
+19a. Create `Cypresso/agents/TestManagerAgent.md` — functional prompt: - Role: Manage saved tests (filter, search, update, delete, load) - Rules: validate filter parameters, enforce update constraints, handle cascade deletes - Includes QA validation checklist for filter and update operations - Input: filter parameters or update payload - Output: filtered test list or updated test record
 
-## Phase 5 — Skill Definitions (3 files)
+20. **Self-validate**: Confirm all 5 agent files exist and each contains at least a `# Role` and `# Rules` section. Retry up to 2×.
+
+## Phase 5 — Skill Definitions (4 files)
 
 21. Create `Cypresso/skills/validate-test.md` — rules for test validation:
     - Must contain `describe()` and at least one `it()` block
@@ -102,8 +117,11 @@ Mode: Generate Only (Dry-Run)
     - Levels: INFO, WARN, ERROR, SUCCESS
     - Aggregate per-step status into a summary bar
     - On error, include the failing step name and a retry suggestion
+    - Filter/update/delete operation feedback rules
 
-24. **Self-validate**: Confirm all 3 skill files exist and are non-empty. Retry up to 2×.
+23a. Create `Cypresso/skills/filter-tests.md` — rules for test filtering and search: - Search: case-insensitive matching in userStory and testCode (JavaScript-level for SQLite) - Status filter: database-level, accepts 'draft' or 'exported' - Date range: YYYY-MM-DD format with UTC day boundary conversion - Combined filters: compose correctly with AND logic - QA validation checklist for each filter type
+
+24. **Self-validate**: Confirm all 4 skill files exist and are non-empty. Retry up to 2×.
 
 ## Phase 6 — Instructions & Plans (2 files)
 
@@ -139,21 +157,25 @@ Mode: Generate Only (Dry-Run)
 
 ## Phase 8 — Final Self-Validation Sweep
 
-30. Run a full sweep confirming all **20 files** across **12 directories** exist and are non-empty:
+30. Run a full sweep confirming all **24 files** across **14 directories** exist and are non-empty:
 
-    | Directory                        | Files                                                                                          | Count |
-    | -------------------------------- | ---------------------------------------------------------------------------------------------- | ----- |
-    | `Cypresso/`                      | `package.json`, `tsconfig.json`, `next.config.mjs`, `tailwind.config.ts`, `postcss.config.mjs` | 5     |
-    | `Cypresso/src/app/`              | `layout.tsx`, `page.tsx`, `globals.css`                                                        | 3     |
-    | `Cypresso/src/app/api/generate/` | `route.ts`                                                                                     | 1     |
-    | `Cypresso/src/app/api/export/`   | `route.ts`                                                                                     | 1     |
-    | `Cypresso/src/app/api/validate/` | `route.ts`                                                                                     | 1     |
-    | `Cypresso/src/app/api/feedback/` | `route.ts`                                                                                     | 1     |
-    | `Cypresso/agents/`               | 4 `.md` files                                                                                  | 4     |
-    | `Cypresso/skills/`               | 3 `.md` files                                                                                  | 3     |
-    | `Cypresso/instructions/`         | `instructions.md`                                                                              | 1     |
-    | `Cypresso/plans/`                | `cypresso-full-workflow.md`                                                                    | 1     |
-    | `Cypresso/templates/`            | `base-test-template.ts`                                                                        | 1     |
+    | Directory                              | Files                                                                                          | Count |
+    | -------------------------------------- | ---------------------------------------------------------------------------------------------- | ----- |
+    | `Cypresso/`                            | `package.json`, `tsconfig.json`, `next.config.mjs`, `tailwind.config.ts`, `postcss.config.mjs` | 5     |
+    | `Cypresso/src/app/`                    | `layout.tsx`, `page.tsx`, `globals.css`                                                        | 3     |
+    | `Cypresso/src/app/api/generate/`       | `route.ts`                                                                                     | 1     |
+    | `Cypresso/src/app/api/export/`         | `route.ts`                                                                                     | 1     |
+    | `Cypresso/src/app/api/validate/`       | `route.ts`                                                                                     | 1     |
+    | `Cypresso/src/app/api/feedback/`       | `route.ts`                                                                                     | 1     |
+    | `Cypresso/src/app/api/tests/`          | `route.ts`                                                                                     | 1     |
+    | `Cypresso/src/app/api/tests/[testId]/` | `route.ts`                                                                                     | 1     |
+    | `Cypresso/src/lib/`                    | `db.ts`                                                                                        | 1     |
+    | `Cypresso/prisma/`                     | `schema.prisma`                                                                                | 1     |
+    | `Cypresso/agents/`                     | 5 `.md` files                                                                                  | 5     |
+    | `Cypresso/skills/`                     | 4 `.md` files                                                                                  | 4     |
+    | `Cypresso/instructions/`               | `instructions.md`                                                                              | 1     |
+    | `Cypresso/plans/`                      | `cypresso-full-workflow.md`                                                                    | 1     |
+    | `Cypresso/templates/`                  | `base-test-template.ts`                                                                        | 1     |
 
 31. Log a summary table of pass/fail per file. Retry any failed files up to 3×. Output final status.
 

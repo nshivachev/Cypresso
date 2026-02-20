@@ -37,6 +37,58 @@ export async function GET(
 }
 
 /**
+ * PUT /api/tests/[testId]
+ *
+ * Updates a test's user story and/or test code.
+ */
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { testId: string } },
+) {
+  try {
+    const { userStory, testCode } = (await request.json()) as {
+      userStory?: string;
+      testCode?: string;
+    };
+
+    if (!userStory && !testCode) {
+      return NextResponse.json(
+        { status: 'error', error: 'userStory or testCode is required' },
+        { status: 400 },
+      );
+    }
+
+    const updateData: {
+      userStory?: string;
+      testCode?: string;
+      updatedAt: Date;
+    } = {
+      updatedAt: new Date(),
+    };
+
+    if (userStory) updateData.userStory = userStory;
+    if (testCode) updateData.testCode = testCode;
+
+    const test = await prisma.generatedTest.update({
+      where: { id: params.testId },
+      data: updateData,
+      include: {
+        validationIssues: true,
+        exportLog: true,
+      },
+    });
+
+    return NextResponse.json({ test, status: 'success' });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json(
+      { status: 'error', error: message },
+      { status: 500 },
+    );
+  }
+}
+
+/**
  * DELETE /api/tests/[testId]
  *
  * Deletes a test and all related records (cascade).

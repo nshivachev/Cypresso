@@ -3,15 +3,15 @@ Default Installation Path: ./Cypresso
 Mode: Generate Only / Dry-Run
 
 Goal:
-Bootstrap the complete Cypresso project from scratch in the current directory with all folders, agents, skills, instructions, templates, package.json, database schema, and Web UI workflow. Populate all agents and skills with minimal functional prompts so the project is immediately usable for generating Cypress tests, exporting, QA validation, and user feedback with persistent database storage. Allow the user to make final edits before actual workflow execution. Include self-validation and retry loops for all steps.
+Bootstrap the complete Cypresso project from scratch in the current directory with all folders, agents, skills, instructions, templates, package.json, database schema, and Web UI workflow. Populate all agents and skills with minimal functional prompts so the project is immediately usable for generating Cypress tests, exporting, QA validation, user feedback, and test management with persistent database storage.
 
 Technologies:
 
 - Frontend: React + Next.js + TailwindCSS + TypeScript
 - Backend: Node.js API routes (Next.js) to invoke Plan + Agents
 - Database: Prisma ORM + PostgreSQL/SQLite for test persistence
-- Agents: TestGeneratorAgent, ExportAgent, QAValidationAgent, UIFeedbackAgent
-- Skills: validate-test, export-test, ui-feedback
+- Agents: TestGeneratorAgent, ExportAgent, QAValidationAgent, UIFeedbackAgent, TestManagerAgent
+- Skills: validate-test, export-test, ui-feedback, filter-tests
 - Templates: base-test-template.ts
 - Self-validation and retry loops
 
@@ -35,6 +35,7 @@ Workflow Steps:
    - ExportAgent.md → export generated test code to {targetProject}/cypress/e2e/ and log export to database
    - QAValidationAgent.md → validate generated test (syntax, idempotence, optional run) and store validation issues
    - UIFeedbackAgent.md → provide user feedback and logs, with database tracking
+   - TestManagerAgent.md → manage test lifecycle (filter, search, update, delete) and ensure CRUD operations maintain data integrity
    - Populate each agent with functional placeholder prompts including DB operations
    - Self-validation: ensure agent files exist and contain prompt content with database logic
 
@@ -42,6 +43,7 @@ Workflow Steps:
    - validate-test.md → rules for test validation with database persistence
    - export-test.md → rules for export with database logging
    - ui-feedback.md → rules for feedback display with test history from database
+   - filter-tests.md → rules for filtering and searching tests by text, status, and date range
    - Self-validation: ensure skill files exist and contain content
 
 5. **Generate Instructions**
@@ -66,11 +68,16 @@ Workflow Steps:
      - Logs/status panel with real-time updates
      - Saved Tests section displaying database records
      - Test detail view with validation issues and export history
+     - Filter controls: search input, status dropdown, date range pickers, clear filters button
+     - Edit modal: full-screen overlay with userStory and testCode textareas, save/cancel buttons
+     - Test card actions: Load, Edit, Delete
    - API routes to backend:
      - POST `/api/generate` → invoke TestGeneratorAgent, save to database
      - POST `/api/validate` → invoke QAValidationAgent, store issues
      - POST `/api/export` → invoke ExportAgent, log export
-     - GET `/api/tests` → retrieve saved tests from database
+     - GET `/api/tests` → retrieve saved tests with filter/search support
+     - GET `/api/tests?search=&status=&dateFrom=&dateTo=` → filtered test retrieval
+     - PUT `/api/tests/{testId}` → update test userStory and/or testCode
      - DELETE `/api/tests/{testId}` → remove test from database
      - GET `/api/tests/{testId}` → retrieve test details with history
    - Self-validation for frontend components and API connectivity
@@ -117,12 +124,19 @@ Global Rules:
 
 Database Integration Checklist:
 
-- ✅ Prisma schema with GeneratedTest, ValidationIssue, ExportLog models
-- ✅ Database client initialization (db.ts)
-- ✅ Environment configuration template (.env.local)
-- ✅ Migration files ready for execution
-- ✅ All agents include database save/log operations
-- ✅ All API routes include database queries
-- ✅ Web UI displays saved tests from database
-- ✅ Error handling for all database operations
-- ✅ Retry logic for failed database saves
+- Prisma schema with GeneratedTest, ValidationIssue, ExportLog models
+- Database client initialization (db.ts)
+- Environment configuration template (.env.local)
+- Migration files ready for execution
+- All agents include database save/log operations
+- All API routes include database queries
+- Web UI displays saved tests from database
+- Error handling for all database operations
+- Retry logic for failed database saves
+- Filter/search API with query parameters (search, status, dateFrom, dateTo)
+- Case-insensitive text search (JavaScript-level for SQLite compatibility)
+- Date range filtering with proper UTC day boundaries
+- PUT endpoint for updating test userStory and testCode
+- Edit modal in Web UI with save/cancel functionality
+- Filter controls with auto-reload on state change
+- QA validation rules for filter and update functionality

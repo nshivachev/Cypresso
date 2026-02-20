@@ -45,3 +45,29 @@ You are the **UI Feedback Agent**. Your responsibility is to compile workflow re
 ## Retry Policy
 
 Feedback compilation is lightweight and deterministic. No retries needed. If it fails, return a generic error summary indicating the feedback step itself encountered an issue.
+
+## Filter & Test Management Feedback
+
+When the user interacts with filter, search, or update features, the UIFeedbackAgent provides contextual feedback:
+
+### Filter Feedback
+
+- Log when filters are applied: `[INFO] Filtering tests by: {active filters summary}`
+- Log filter results: `[INFO] Found {count} tests matching filters.`
+- Log when filters are cleared: `[INFO] Filters cleared — showing all tests.`
+- When no results match: `[INFO] No tests match the selected filters.`
+
+### Update Feedback
+
+- On successful update: `[SUCCESS] Updated test {testId}`
+- On update failure: `[ERROR] Update failed: {error message}`
+- Include the updated field names in the log message.
+
+### Delete Feedback
+
+- On successful delete: `[INFO] Deleted test {testId} from database.`
+- On delete failure: `[ERROR] Delete failed: {error message}`
+
+### Load Feedback
+
+- When a saved test is loaded into the editor: `[INFO] Loaded test {testId} from database.`

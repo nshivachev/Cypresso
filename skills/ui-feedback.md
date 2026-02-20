@@ -57,3 +57,36 @@ After the summary, display 1–3 actionable recommendations:
 - Use semantic HTML (`<pre>`, `<code>`, `<button>`).
 - Ensure color is not the only indicator — prepend level labels (`[INFO]`, `[ERROR]`, etc.).
 - Buttons have descriptive text (not just icons).
+
+## Filter & Test Management Feedback
+
+### Filter Operations
+
+- When filters are applied, the test count badge updates to reflect the filtered result count.
+- The empty state message changes based on filter context:
+  - With active filters: "No tests match the selected filters."
+  - Without filters: "No saved tests yet — generate one above."
+- Clear Filters resets all inputs and reloads the full test list.
+
+### Test Update Operations
+
+- On successful update via Edit modal: `[SUCCESS] Updated test {testId}`
+- On update failure: `[ERROR] Update failed: {error message}`
+- The Edit modal remains open on failure so the user can retry.
+- On successful save, the test list refreshes automatically.
+
+### Test Delete Operations
+
+- On successful delete: `[INFO] Deleted test {testId} from database.`
+- The test list refreshes automatically after deletion.
+
+### Test Load Operations
+
+- On loading a test into the editor: `[INFO] Loaded test {testId} from database.`
+- The user story textarea, test code preview, and active testId are all updated.
+
+### Saved Tests Panel
+
+- Each test card displays: truncated user story (80 chars), status badge (color-coded), validation issue count, export count, creation timestamp.
+- Action buttons per card: **Load** (border-slate), **Edit** (border-blue), **Delete** (border-red).
+- The panel header shows total count with a badge and a Refresh button.

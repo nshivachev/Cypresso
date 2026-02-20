@@ -104,6 +104,88 @@ User Story (Web UI)
 
 ---
 
+## Test Management Workflow
+
+In addition to the generation pipeline, the Web UI supports a full CRUD workflow for managing saved tests.
+
+### Filter & Search Tests
+
+```
+User applies filter controls
+       │
+       ▼
+┌──────────────────────────┐
+│ Build query parameters   │
+│ (search, status, dates)  │
+└──────────────────────────┘
+       │
+       ▼
+┌──────────────────────────┐
+│ GET /api/tests?params    │
+│ (DB query + JS search)   │
+└──────────────────────────┘
+       │
+       ▼
+┌──────────────────────────┐
+│ Display filtered results │
+│ in Saved Tests panel     │
+└──────────────────────────┘
+```
+
+- **Source**: Filter controls in the Saved Tests section (search input, status dropdown, date range pickers).
+- **API**: `GET /api/tests` with query parameters: `search`, `status`, `dateFrom`, `dateTo`.
+- **Filter Application Order**:
+  1. Status and date range filters are applied at the **database level** (Prisma `where` clause).
+  2. Text search is applied in **JavaScript** after database fetch (SQLite limitation — no case-insensitive `contains`).
+- **Date Handling**: HTML date inputs produce `YYYY-MM-DD` strings. The API converts `dateFrom` to `T00:00:00Z` and `dateTo` to `T23:59:59Z` to cover full days.
+- **Auto-Reload**: Changing any filter value triggers automatic reload via `useEffect` dependency on filter state.
+- **Clear Filters**: Resets search, status, dateFrom, and dateTo to defaults and reloads all tests.
+
+### Edit / Update Test
+
+```
+User clicks "Edit" on a test card
+       │
+       ▼
+┌──────────────────────────┐
+│ Open Edit Modal          │
+│ (userStory + testCode)   │
+└──────────────────────────┘
+       │
+       ▼
+   User edits fields
+       │
+       ▼
+┌──────────────────────────┐
+│ PUT /api/tests/{testId}  │
+│ (partial update)         │
+└──────────────────────────┘
+       │
+       ▼
+┌──────────────────────────┐
+│ Refresh test list        │
+│ Log success/error        │
+└──────────────────────────┘
+```
+
+- **API**: `PUT /api/tests/{testId}` with `{ userStory?, testCode? }`.
+- **Validation**: At least one field must be provided. Missing testId returns 404.
+- **Behavior**: Updates only the provided fields; `updatedAt` is always refreshed. Existing status, validation issues, and export logs are preserved.
+- **UI**: Full-screen modal overlay with editable textareas for both fields. Save or Cancel to dismiss.
+
+### Delete Test
+
+- **API**: `DELETE /api/tests/{testId}`.
+- **Behavior**: Removes the test and cascades to delete related `ValidationIssue` and `ExportLog` records.
+- **UI**: Confirmation happens inline; test list is refreshed after deletion.
+
+### Load Test into Editor
+
+- Clicking "Load" on a test card populates the editor's user story textarea, test code preview, and sets the active `testId`.
+- Subsequent Validate or Export operations use the loaded `testId` for database tracking.
+
+---
+
 ## Dry-Run Mode Behavior
 
 In **Generate Only / Dry-Run** mode (the default for Cypresso bootstrapping):
@@ -124,4 +206,7 @@ In **Generate Only / Dry-Run** mode (the default for Cypresso bootstrapping):
 | 3 — Validate | Validation issues          | Warn + continue (dry-run) or retry generate (live) | 3 (shared with Step 2) |
 | 4 — Export   | Path error / write failure | Retry with delay                                   | 2                      |
 | 5 — Feedback | Compilation failure        | Skip — non-critical                                | 0                      |
+| Filter       | API error                  | Show error state, allow retry via Refresh button   | 0                      |
+| Update       | API error / 404            | Log error, keep modal open for retry               | 0                      |
+| Delete       | API error                  | Log error, test remains in list                    | 0                      |
 | Any          | Network timeout            | Retry with backoff                                 | 3                      |

@@ -82,21 +82,79 @@ export default function DashboardPage() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [savedTests, setSavedTests] = useState<SavedTest[]>([]);
+  const [testCount, setTestCount] = useState(0);
+
+  // Filter state
+  const [searchText, setSearchText] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+
+  // Edit modal state
+  const [editingTest, setEditingTest] = useState<SavedTest | null>(null);
+  const [editUserStory, setEditUserStory] = useState('');
+  const [editTestCode, setEditTestCode] = useState('');
+
   const logsEndRef = useRef<HTMLDivElement>(null);
 
   const loadSavedTests = useCallback(async () => {
     try {
-      const res = await fetch('/api/tests');
+      const params = new URLSearchParams();
+      if (searchText.trim()) params.append('search', searchText);
+      if (selectedStatus && selectedStatus !== 'all')
+        params.append('status', selectedStatus);
+      if (dateFrom) params.append('dateFrom', dateFrom);
+      if (dateTo) params.append('dateTo', dateTo);
+
+      const url = `/api/tests${params.toString() ? `?${params.toString()}` : ''}`;
+      const res = await fetch(url);
       const data = await res.json();
-      if (data.status === 'success') setSavedTests(data.tests);
+      if (data.status === 'success') {
+        setSavedTests(data.tests);
+        setTestCount(data.count);
+      }
     } catch {
       // non-blocking
     }
-  }, []);
+  }, [searchText, selectedStatus, dateFrom, dateTo]);
 
   useEffect(() => {
     loadSavedTests();
   }, [loadSavedTests]);
+
+  const handleClearFilters = () => {
+    setSearchText('');
+    setSelectedStatus('all');
+    setDateFrom('');
+    setDateTo('');
+  };
+
+  const handleUpdateTest = async () => {
+    if (!editingTest) return;
+    try {
+      const res = await fetch(`/api/tests/${editingTest.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userStory: editUserStory,
+          testCode: editTestCode,
+        }),
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        addLog('SUCCESS', `Updated test ${editingTest.id}`);
+        setEditingTest(null);
+        await loadSavedTests();
+      } else {
+        addLog('ERROR', `Update failed: ${data.error}`);
+      }
+    } catch (err) {
+      addLog(
+        'ERROR',
+        `Update error: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  };
 
   const addLog = useCallback((level: LogLevel, message: string) => {
     setLogs((prev) => [...prev, { timestamp: now(), level, message }]);
@@ -449,7 +507,7 @@ export default function DashboardPage() {
           <h2 className='text-sm font-medium text-slate-300'>
             Saved Tests{' '}
             <span className='ml-1 rounded bg-slate-700 px-1.5 py-0.5 text-xs text-slate-400'>
-              {savedTests.length}
+              {testCount}
             </span>
           </h2>
           <button
@@ -460,9 +518,65 @@ export default function DashboardPage() {
           </button>
         </div>
 
+        {/* Filter Controls */}
+        <div className='mb-4 grid gap-3 rounded-lg border border-slate-700 bg-slate-800 p-4 md:grid-cols-4'>
+          <div>
+            <label className='mb-1 block text-xs text-slate-400'>Search</label>
+            <input
+              type='text'
+              placeholder='Search tests...'
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              className='w-full rounded border border-slate-600 bg-slate-900 px-2 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:outline-none'
+            />
+          </div>
+          <div>
+            <label className='mb-1 block text-xs text-slate-400'>Status</label>
+            <select
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              className='w-full rounded border border-slate-600 bg-slate-900 px-2 py-1.5 text-xs text-slate-100 focus:border-emerald-500 focus:outline-none'
+            >
+              <option value='all'>All</option>
+              <option value='draft'>Draft</option>
+              <option value='exported'>Exported</option>
+            </select>
+          </div>
+          <div>
+            <label className='mb-1 block text-xs text-slate-400'>
+              From Date
+            </label>
+            <input
+              type='date'
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className='w-full rounded border border-slate-600 bg-slate-900 px-2 py-1.5 text-xs text-slate-100 focus:border-emerald-500 focus:outline-none'
+            />
+          </div>
+          <div>
+            <label className='mb-1 block text-xs text-slate-400'>To Date</label>
+            <input
+              type='date'
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className='w-full rounded border border-slate-600 bg-slate-900 px-2 py-1.5 text-xs text-slate-100 focus:border-emerald-500 focus:outline-none'
+            />
+          </div>
+          <div className='md:col-span-4 flex justify-end'>
+            <button
+              onClick={handleClearFilters}
+              className='rounded border border-slate-600 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-700'
+            >
+              Clear Filters
+            </button>
+          </div>
+        </div>
+
         {savedTests.length === 0 ? (
           <p className='text-xs text-slate-600'>
-            No saved tests yet — generate one above.
+            {searchText || selectedStatus !== 'all' || dateFrom || dateTo
+              ? 'No tests match the selected filters.'
+              : 'No saved tests yet — generate one above.'}
           </p>
         ) : (
           <div className='space-y-2'>
@@ -505,6 +619,16 @@ export default function DashboardPage() {
                     Load
                   </button>
                   <button
+                    onClick={() => {
+                      setEditingTest(test);
+                      setEditUserStory(test.userStory);
+                      setEditTestCode(test.testCode);
+                    }}
+                    className='rounded border border-blue-700 px-2 py-1 text-xs text-blue-400 hover:bg-blue-900/30'
+                  >
+                    Edit
+                  </button>
+                  <button
                     onClick={async () => {
                       await fetch(`/api/tests/${test.id}`, {
                         method: 'DELETE',
@@ -522,6 +646,64 @@ export default function DashboardPage() {
           </div>
         )}
       </section>
+
+      {/* Edit Modal */}
+      {editingTest && (
+        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4'>
+          <div className='w-full max-w-4xl rounded-lg bg-slate-800 p-6 shadow-2xl'>
+            <div className='mb-4 flex items-center justify-between'>
+              <h2 className='text-lg font-bold text-slate-100'>Edit Test</h2>
+              <button
+                onClick={() => setEditingTest(null)}
+                className='text-slate-400 hover:text-slate-200'
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className='space-y-4'>
+              <div>
+                <label className='mb-1 block text-sm font-medium text-slate-300'>
+                  User Story
+                </label>
+                <textarea
+                  className='w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500'
+                  rows={4}
+                  value={editUserStory}
+                  onChange={(e) => setEditUserStory(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className='mb-1 block text-sm font-medium text-slate-300'>
+                  Test Code
+                </label>
+                <textarea
+                  className='w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 font-mono text-xs text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500'
+                  rows={20}
+                  value={editTestCode}
+                  onChange={(e) => setEditTestCode(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className='mt-6 flex justify-end gap-3'>
+              <button
+                onClick={() => setEditingTest(null)}
+                className='rounded-lg border border-slate-600 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-700'
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateTest}
+                className='rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500'
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

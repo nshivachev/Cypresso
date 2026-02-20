@@ -39,3 +39,22 @@ Validation rules applied by the **QAValidationAgent** when checking a generated 
 | Anti-Patterns | Advisory | Zero anti-patterns = clean; warnings are non-blocking |
 
 A test **passes** validation only if all **Required** checks pass. Advisory issues generate warnings but do not block export.
+
+## Database Persistence
+
+After validation, issues are persisted to the database:
+
+- Delete existing `ValidationIssue` records for the test (if re-validating).
+- Create new `ValidationIssue` records with `testId`, `issue` description, and `severity` level.
+- Severity mapping:
+  - **Required** check failures → `error`
+  - **Advisory** check failures → `warning`
+- Validation results are returned to the UI and visible in the test card's issue count.
+
+## Filter & Update Validation
+
+The same validation principles apply when tests are modified via the Edit modal:
+
+- After a user updates `testCode` via `PUT /api/tests/{testId}`, re-validation should be considered.
+- Updated test code must still pass all **Required** checks before being exported.
+- The `status` field is not automatically changed on update — the user must explicitly re-validate and re-export.
