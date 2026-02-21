@@ -68,6 +68,14 @@ Each test card in the **Saved Tests** panel has three action buttons:
 
 After editing or deleting, the test list refreshes automatically.
 
+![Main screen - header, filter, user story input, log, action buttons](screenshots/main.png)
+
+![Generating test + log](screenshots/generated_test.png)
+
+![Edit screen](screenshots/edit_test.png)
+
+![Loading an edited test + log](screenshots/load_edited_test.png)
+
 ## API Endpoints
 
 All endpoints accept and return JSON.
@@ -210,11 +218,3 @@ Cypresso/
 - If search is not finding tests, verify the search text is in the user story or test code (search is case-insensitive).
 - If date range filter is not working, ensure dates are in `YYYY-MM-DD` format. The UI date pickers handle this automatically.
 - If edit/update fails, check the browser console for error messages and verify the test exists (testId is valid).
-
-![Main screen - header, filter, user story input, log, action buttons](screenshots/main.png)
-
-![Generating test + log](screenshots/generated_test.png)
-
-![Edit screen](screenshots/edit_test.png)
-
-![Loading an edited test + log](screenshots/load_edited_test.png)
