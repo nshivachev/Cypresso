@@ -1,4 +1,4 @@
-# Cypresso
+# ![](screenshots/logo.png) Cypresso
 
 Cypresso is a Cypress test generation workspace that turns user stories into TypeScript-based Cypress E2E tests. It includes a Next.js web dashboard, API routes that orchestrate generation/validation/export steps, an agent/skill system for modular prompts and rules, and a SQLite database for persistent test storage.
 
@@ -210,3 +210,11 @@ Cypresso/
 - If search is not finding tests, verify the search text is in the user story or test code (search is case-insensitive).
 - If date range filter is not working, ensure dates are in `YYYY-MM-DD` format. The UI date pickers handle this automatically.
 - If edit/update fails, check the browser console for error messages and verify the test exists (testId is valid).
+
+![Main screen - header, filter, user story input, log, action buttons](screenshots/main.png)
+
+![Generating test + log](screenshots/generated_test.png)
+
+![Edit screen](screenshots/edit_test.png)
+
+![Loading an edited test + log](screenshots/load_edited_test.png)
