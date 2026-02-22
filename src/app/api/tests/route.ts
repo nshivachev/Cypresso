@@ -21,22 +21,70 @@ export async function GET(request: NextRequest) {
 
     const where: any = {};
 
-    // Status filter (database level)
-    if (status && (status === 'draft' || status === 'exported')) {
-      where.status = status;
+    // Status filter (database level) — only draft or exported are valid
+    if (status && status !== 'all') {
+      if (status === 'draft' || status === 'exported') {
+        where.status = status;
+      } else {
+        // Invalid status value
+        return NextResponse.json(
+          {
+            tests: [],
+            status: 'error',
+            error: `Invalid status filter: "${status}". Must be "draft", "exported", or "all".`,
+          },
+          { status: 400 },
+        );
+      }
     }
 
-    // Date range filter (database level)
+    // Date range filter (database level) with validation
     if (dateFrom || dateTo) {
+      // Validate date format (YYYY-MM-DD)
+      const dateFormatRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (
+        (dateFrom && !dateFormatRegex.test(dateFrom)) ||
+        (dateTo && !dateFormatRegex.test(dateTo))
+      ) {
+        return NextResponse.json(
+          {
+            tests: [],
+            status: 'error',
+            error: 'Invalid date format. Dates must be in YYYY-MM-DD format.',
+          },
+          { status: 400 },
+        );
+      }
+
       where.createdAt = {};
       if (dateFrom) {
-        // Parse YYYY-MM-DD format and set to start of day
+        // Parse YYYY-MM-DD format and set to start of day (UTC)
         const fromDate = new Date(dateFrom + 'T00:00:00Z');
+        if (isNaN(fromDate.getTime())) {
+          return NextResponse.json(
+            {
+              tests: [],
+              status: 'error',
+              error: `Invalid dateFrom value: "${dateFrom}".`,
+            },
+            { status: 400 },
+          );
+        }
         where.createdAt.gte = fromDate;
       }
       if (dateTo) {
-        // Parse YYYY-MM-DD format and set to end of day
+        // Parse YYYY-MM-DD format and set to end of day (UTC)
         const toDate = new Date(dateTo + 'T23:59:59Z');
+        if (isNaN(toDate.getTime())) {
+          return NextResponse.json(
+            {
+              tests: [],
+              status: 'error',
+              error: `Invalid dateTo value: "${dateTo}".`,
+            },
+            { status: 400 },
+          );
+        }
         where.createdAt.lte = toDate;
       }
     }

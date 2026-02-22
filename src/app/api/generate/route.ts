@@ -66,23 +66,69 @@ export async function POST(request: NextRequest) {
       logs.push('Template file not found — using inline fallback.');
     }
 
-    // Derive simple placeholders from the user story
-    const featureName = userStory
-      .slice(0, 60)
-      .replace(/[^a-zA-Z0-9 ]/g, '')
-      .trim();
-    const slug = featureName.toLowerCase().replace(/\s+/g, '-');
+    // Helper function to validate test structure
+    const isValidTest = (code: string): boolean => {
+      const hasDescribe = /describe\s*\(/.test(code);
+      const hasIt = /it\s*\(/.test(code);
+      const hasAssertion =
+        /\.should\s*\(/.test(code) ||
+        /expect\s*\(/.test(code) ||
+        /assert[\s.]/.test(code);
+      return hasDescribe && hasIt && hasAssertion;
+    };
 
-    const testCode = template
-      .replace(/\{\{Feature Name\}\}/g, featureName)
-      .replace(/\{\{action\}\}/g, `complete the "${slug}" flow`)
-      .replace(/\{\{url\}\}/g, '/')
-      .replace(/\{\{selector\}\}/g, "[data-testid='main']")
-      .replace(/\{\{assertion\}\}/g, 'be.visible');
+    // Self-validation retry loop (3 attempts as per TestGeneratorAgent)
+    let testCode: string = '';
+    let genAttempt = 0;
+    const maxGenAttempts = 3;
+    const backoffMs = [500, 1000, 2000];
 
-    logs.push(
-      'Test code generated from template with user-story placeholders.',
-    );
+    while (genAttempt < maxGenAttempts && !testCode) {
+      genAttempt++;
+
+      // Derive simple placeholders from the user story
+      const featureName = userStory
+        .slice(0, 60)
+        .replace(/[^a-zA-Z0-9 ]/g, '')
+        .trim();
+      const slug = featureName.toLowerCase().replace(/\s+/g, '-');
+
+      const generatedCode = template
+        .replace(/\{\{Feature Name\}\}/g, featureName)
+        .replace(/\{\{action\}\}/g, `complete the "${slug}" flow`)
+        .replace(/\{\{url\}\}/g, '/')
+        .replace(/\{\{selector\}\}/g, "[data-testid='main']")
+        .replace(/\{\{assertion\}\}/g, 'be.visible');
+
+      logs.push(
+        `Attempt ${genAttempt}/${maxGenAttempts}: Test code generated from template.`,
+      );
+
+      // Validate generated test structure
+      if (isValidTest(generatedCode)) {
+        testCode = generatedCode;
+        logs.push(
+          `Attempt ${genAttempt}/${maxGenAttempts}: Self-validation PASSED (has describe, it, assertion).`,
+        );
+      } else {
+        logs.push(
+          `Attempt ${genAttempt}/${maxGenAttempts}: Self-validation FAILED (missing required structure).`,
+        );
+        if (genAttempt < maxGenAttempts) {
+          const delay = backoffMs[genAttempt - 1];
+          logs.push(
+            `[WARN] Retrying test generation in ${delay}ms (attempt ${genAttempt}/${maxGenAttempts})…`,
+          );
+          // Exponential backoff
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        } else {
+          logs.push(
+            '[ERROR] Test generation failed after 3 attempts — returning best attempt.',
+          );
+          testCode = generatedCode; // Use the last attempt as fallback
+        }
+      }
+    }
 
     // Save to SQLite database with retry logic
     let testId: string | undefined;

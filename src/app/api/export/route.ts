@@ -51,18 +51,38 @@ export async function POST(request: NextRequest) {
     logs.push(`Full export path: ${exportedPath}`);
     logs.push('Dry-run mode — file NOT written to disk.');
 
-    // Log export to SQLite database
+    // Log export to SQLite database with retry logic (2 attempts as per workflow)
     if (testId) {
-      try {
-        await prisma.exportLog.create({ data: { testId, path: exportedPath } });
-        await prisma.generatedTest.update({
-          where: { id: testId },
-          data: { status: 'exported', exportPath: exportedPath },
-        });
-        logs.push(`Export logged to SQLite database for test ID: ${testId}`);
-      } catch (dbErr) {
-        const dbMsg = dbErr instanceof Error ? dbErr.message : String(dbErr);
-        logs.push(`Warning: Failed to log export: ${dbMsg}`);
+      let exportLogged = false;
+      let exportRetry = 0;
+      const maxExportRetries = 2;
+
+      while (exportRetry < maxExportRetries && !exportLogged) {
+        try {
+          await prisma.exportLog.create({
+            data: { testId, path: exportedPath },
+          });
+          await prisma.generatedTest.update({
+            where: { id: testId },
+            data: { status: 'exported', exportPath: exportedPath },
+          });
+          logs.push(`Export logged to SQLite database for test ID: ${testId}`);
+          exportLogged = true;
+        } catch (dbErr) {
+          exportRetry++;
+          const dbMsg = dbErr instanceof Error ? dbErr.message : String(dbErr);
+          if (exportRetry < maxExportRetries) {
+            logs.push(
+              `[WARN] Export logging failed, retrying (${exportRetry}/${maxExportRetries}): ${dbMsg}`,
+            );
+            // 500ms delay between retries
+            await new Promise((resolve) => setTimeout(resolve, 500));
+          } else {
+            logs.push(
+              `[ERROR] Export logging failed after ${maxExportRetries} attempts: ${dbMsg}`,
+            );
+          }
+        }
       }
     }
 
