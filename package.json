@@ -3,11 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "description": "Cypress Test Generation Platform — generate, validate, and export Cypress E2E tests from user stories",
+  "workspaces": [
+    "packages/tests"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "npm run test --workspace=packages/tests",
+    "test:watch": "npm run test -- --watch --workspace=packages/tests",
+    "test:ui": "npm run test:ui --workspace=packages/tests",
+    "test:coverage": "npm run test:coverage --workspace=packages/tests",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",

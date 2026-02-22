@@ -12,8 +12,33 @@ Cypresso is a Cypress test generation workspace that turns user stories into Typ
 - Global instructions in `instructions/`
 - Workflow plan in `plans/`
 - Cypress test template in `templates/`
+- **Unit tests** in `packages/tests/` (Vitest — separate test project)
 
-## Quick Start
+## Monorepo Structure
+
+This is a **monorepo** with the following structure:
+
+```
+Cypresso/
+├── src/                      # Main Next.js application
+├── packages/
+│   └── tests/                # Unit tests (Vitest)
+│       ├── src/api/
+│       │   ├── generate.test.ts
+│       │   ├── validate.test.ts
+│       │   └── export.test.ts
+│       ├── vitest.config.ts
+│       └── package.json
+├── prisma/                   # Database schema
+├── agents/                   # Agent prompts
+├── skills/                   # Skill rules
+├── templates/                # Cypress test templates
+└── package.json             # Root package (with workspaces)
+```
+
+Each workspace is independent with its own dependencies and build configuration.
+
+## Quick Start - Main App
 
 ```bash
 cd Cypresso
@@ -23,6 +48,25 @@ npm run dev
 ```
 
 Open `http://localhost:3000` to use the dashboard.
+
+## Running Tests
+
+Run unit tests for API validation logic:
+
+```bash
+npm test                 # Run all tests
+npm run test:watch      # Run tests in watch mode
+npm run test:ui         # Run tests with UI
+npm run test:coverage   # Generate coverage report
+```
+
+Tests are located in `packages/tests/` and cover:
+
+- **generate.test.ts**: Self-validation logic (describe/it/assertion checks), retry loops, edge cases
+- **validate.test.ts**: Structure validation, anti-pattern detection (hardcoded waits, cy.exec()), date format validation, status filter validation, UTC timezone conversions
+- **export.test.ts**: Feature name extraction, file naming, path derivation, custom path handling
+
+See [packages/tests/README.md](packages/tests/README.md) for detailed test documentation.
 
 ## How Cypresso Works
 
@@ -68,13 +112,13 @@ Each test card in the **Saved Tests** panel has three action buttons:
 
 After editing or deleting, the test list refreshes automatically.
 
-![Main screen - header, filter, user story input, log, action buttons](screenshots/main.png)
+![Main screen - header, filter, user story input, log, action buttons](screenshots/main_screen.png)
 
-![Generating test + log](screenshots/generated_test.png)
-
-![Edit screen](screenshots/edit_test.png)
+![Edit screen](screenshots/edit_screen.png)
 
 ![Loading an edited test + log](screenshots/load_edited_test.png)
+
+![Unit tests report](screenshots/unit_tests_report.png)
 
 ## API Endpoints
 
